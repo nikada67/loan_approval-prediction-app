@@ -14,6 +14,8 @@ st.set_page_config(page_title="Loan Approval Prediction", page_icon="💰")
 st.title("Loan Approval Prediction")
 st.write("Enter the applicant's details below to predict whether the loan will be approved or rejected.")
 
+st.info("💡 **CIBIL Score** is India's credit score system (300–900), similar to a credit score used elsewhere. Higher scores mean stronger creditworthiness and lower default risk.")
+
 ## User inputs — matches the 5 top features used by the final model
 col1, col2 = st.columns(2)
 
@@ -21,13 +23,13 @@ with col1:
     cibil_score = st.slider("CIBIL Score", min_value=300, max_value=900, value=700,
                              help="Credit score from 300 (poor) to 900 (excellent)")
     loan_term = st.slider("Loan Term (years)", min_value=2, max_value=20, value=10)
-    loan_amount = st.number_input("Loan Amount Requested ($)", min_value=0, max_value=50000000,
+    loan_amount = st.number_input("Loan Amount Requested (₹)", min_value=0, max_value=50000000,
                                    value=10000000, step=100000)
 
 with col2:
-    income_annum = st.number_input("Applicant's Annual Income ($)", min_value=0, max_value=20000000,
+    income_annum = st.number_input("Applicant's Annual Income (₹)", min_value=0, max_value=20000000,
                                     value=5000000, step=100000)
-    bank_asset_value = st.number_input("Bank Asset Value ($)", min_value=0, max_value=30000000,
+    bank_asset_value = st.number_input("Bank Asset Value (₹)", min_value=0, max_value=30000000,
                                         value=4000000, step=100000)
 
 with st.expander("Why these 5 features?"):
@@ -60,9 +62,10 @@ if st.button("Predict Loan Status"):
         prediction = model.predict(df_input)[0]
         probability = model.predict_proba(df_input)[0]
 
-        if prediction == 1:
-            st.success(f"Prediction: Loan Approved ✅ (Confidence: {probability[1]*100:.1f}%)")
-        else:
-            st.error(f"Prediction: Loan Rejected ❌ (Confidence: {probability[0]*100:.1f}%)")
+        with st.container(border=True):
+            if prediction == 1:
+                st.success(f"Prediction: Loan Approved ✅ (Confidence: {probability[1]*100:.1f}%)")
+            else:
+                st.error(f"Prediction: Loan Rejected ❌ (Confidence: {probability[0]*100:.1f}%)")
     except Exception as e:
         st.error(f"⚠️ Something went wrong while making the prediction: {e}")
