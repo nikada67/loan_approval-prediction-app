@@ -1,6 +1,7 @@
 import joblib
 import streamlit as st
 import pandas as pd
+import altair as alt
 
 ## Load trained model
 try:
@@ -106,9 +107,11 @@ with st.container(border=True):
     predict_clicked = st.button("Predict Loan Status", use_container_width=True, type="primary")
 
 ## Live sensitivity chart — how approval probability shifts with CIBIL score,
-## holding the other current inputs fixed. Updates live as sliders/inputs change.
+## holding the other current inputs fixed, with a marker showing where the
+## current application sits.
 st.subheader("How CIBIL Score Affects This Application")
-cibil_range = list(range(300, 901, 25))
+
+cibil_range = list(range(300, 901, 10))
 sensitivity_rows = []
 for score in cibil_range:
     row = pd.DataFrame({
@@ -122,9 +125,54 @@ for score in cibil_range:
     prob_approved = model.predict_proba(row)[0][1]
     sensitivity_rows.append({'CIBIL Score': score, 'Approval Probability': prob_approved})
 
-sensitivity_df = pd.DataFrame(sensitivity_rows).set_index('CIBIL Score')
-st.area_chart(sensitivity_df, color="#F0A500")
-st.caption("Shows how the approval probability changes purely with CIBIL score, keeping your other current inputs fixed — reflecting that CIBIL score is the model's dominant factor.")
+sensitivity_df = pd.DataFrame(sensitivity_rows)
+
+## Current selection's exact probability, for the marker
+current_row = pd.DataFrame({
+    'cibil_score': [cibil_score],
+    'loan_term': [loan_term],
+    'loan_amount': [loan_amount],
+    'income_annum': [income_annum],
+    'bank_asset_value': [bank_asset_value]
+})
+current_row = current_row.reindex(columns=model.feature_names_in_, fill_value=0)
+current_prob = model.predict_proba(current_row)[0][1]
+
+line = alt.Chart(sensitivity_df).mark_line(color="#F0A500", strokeWidth=3).encode(
+    x=alt.X('CIBIL Score:Q', scale=alt.Scale(domain=[300, 900]), title="CIBIL Score"),
+    y=alt.Y('Approval Probability:Q', scale=alt.Scale(domain=[0, 1]), title="Predicted Approval Probability")
+)
+
+marker_df = pd.DataFrame({'CIBIL Score': [cibil_score]})
+marker = alt.Chart(marker_df).mark_rule(color="#FFFFFF", strokeDash=[6, 4], strokeWidth=2).encode(
+    x=alt.X('CIBIL Score:Q', scale=alt.Scale(domain=[300, 900]))
+)
+
+label_df = pd.DataFrame({
+    'CIBIL Score': [cibil_score],
+    'Approval Probability': [current_prob],
+    'label': [f"Your application: {cibil_score} → {current_prob*100:.1f}%"]
+})
+point = alt.Chart(label_df).mark_point(color="#FFFFFF", size=100, filled=True).encode(
+    x=alt.X('CIBIL Score:Q', scale=alt.Scale(domain=[300, 900])),
+    y=alt.Y('Approval Probability:Q', scale=alt.Scale(domain=[0, 1]))
+)
+text = alt.Chart(label_df).mark_text(align='left', dx=10, dy=-10, color="#FFFFFF", fontSize=13).encode(
+    x=alt.X('CIBIL Score:Q', scale=alt.Scale(domain=[300, 900])),
+    y=alt.Y('Approval Probability:Q', scale=alt.Scale(domain=[0, 1])),
+    text='label:N'
+)
+
+chart = (line + marker + point + text).properties(height=350).configure_view(
+    fill="#1C2541"
+).configure_axis(
+    labelColor="#F5F5F5",
+    titleColor="#F5F5F5",
+    gridColor="#2E3B55"
+)
+
+st.altair_chart(chart, use_container_width=True)
+st.caption("The dashed line marks your current CIBIL score selection and its predicted approval probability, holding your other inputs fixed.")
 
 ## Predict button
 if predict_clicked:
@@ -154,7 +202,6 @@ if predict_clicked:
                 st.error("Prediction: Loan Rejected ❌")
                 st.progress(probability[0], text=f"Confidence: {probability[0]*100:.1f}%")
 
-        ## Save this test to session history
         st.session_state.history.append({
             'CIBIL Score': cibil_score,
             'Loan Term (yrs)': loan_term,
