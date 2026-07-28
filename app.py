@@ -9,6 +9,9 @@ except FileNotFoundError:
     st.error("⚠️ Model file (best_model.pkl) not found. Please make sure it's in the same folder as this app.")
     st.stop()
 
+## Approximate INR to SGD rate (July 2026) — for reference display only, not live
+SGD_RATE = 0.0134
+
 ## Streamlit app
 st.set_page_config(page_title="Loan Approval Prediction", page_icon="💰", layout="centered")
 
@@ -47,12 +50,15 @@ with st.container(border=True):
         loan_term = st.slider("Loan Term (years)", min_value=2, max_value=20, value=10)
         loan_amount = st.number_input("Loan Amount Requested (₹)", min_value=0, max_value=50000000,
                                        value=10000000, step=100000)
+        st.caption(f"≈ SGD {loan_amount * SGD_RATE:,.0f}")
 
     with col2:
         income_annum = st.number_input("Applicant's Annual Income (₹)", min_value=0, max_value=20000000,
                                         value=5000000, step=100000)
+        st.caption(f"≈ SGD {income_annum * SGD_RATE:,.0f}")
         bank_asset_value = st.number_input("Bank Asset Value (₹)", min_value=0, max_value=30000000,
                                             value=4000000, step=100000)
+        st.caption(f"≈ SGD {bank_asset_value * SGD_RATE:,.0f}")
 
     predict_clicked = st.button("Predict Loan Status", use_container_width=True, type="primary")
 
