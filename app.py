@@ -173,6 +173,7 @@ chart = (line + marker + point + text).properties(height=350).configure_view(
 
 st.altair_chart(chart, use_container_width=True)
 st.caption("The dashed line marks your current CIBIL score selection and its predicted approval probability, holding your other inputs fixed.")
+st.caption("📌 Notice how sharply approval probability shifts around a CIBIL score of ~545 for this applicant profile — this reflects how dominant credit score is in the model's decision-making, consistent with our feature importance findings (88%).")
 
 ## Predict button
 if predict_clicked:
