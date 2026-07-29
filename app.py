@@ -1,7 +1,9 @@
 import joblib
 import streamlit as st
 import pandas as pd
-import altair as alt
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 ## Load trained model
 try:
@@ -143,7 +145,7 @@ with st.container(border=True):
     asset_to_loan_ratio = total_assets / loan_amount if loan_amount else 0
     st.caption(f"Total assets: ₹{total_assets:,.0f} · Asset-to-loan coverage: **{asset_to_loan_ratio:.2f}x**")
 
-    predict_clicked = st.button("Predict Loan Status", use_container_width=True, type="primary")
+    predict_clicked = st.button("Predict Loan Status", width="stretch", type="primary")
 
 ## Live sensitivity chart — how approval probability shifts with CIBIL score,
 ## holding the other current inputs fixed, with a marker showing where the
@@ -167,40 +169,33 @@ current_row = compute_model_features(cibil_score, loan_term, loan_amount, income
                                       luxury_assets_value, bank_asset_value)
 current_prob = model.predict_proba(current_row)[0][1]
 
-line = alt.Chart(sensitivity_df).mark_line(color="#F0A500", strokeWidth=3).encode(
-    x=alt.X('CIBIL Score:Q', scale=alt.Scale(domain=[300, 900]), title="CIBIL Score"),
-    y=alt.Y('Approval Probability:Q', scale=alt.Scale(domain=[0, 1]), title="Predicted Approval Probability")
-)
+fig, ax = plt.subplots(figsize=(10, 3.8))
+fig.patch.set_facecolor("#1C2541")
+ax.set_facecolor("#1C2541")
 
-marker_df = pd.DataFrame({'CIBIL Score': [cibil_score]})
-marker = alt.Chart(marker_df).mark_rule(color="#FFFFFF", strokeDash=[6, 4], strokeWidth=2).encode(
-    x=alt.X('CIBIL Score:Q', scale=alt.Scale(domain=[300, 900]))
-)
+## Main sensitivity line
+ax.plot(sensitivity_df['CIBIL Score'], sensitivity_df['Approval Probability'],
+        color="#F0A500", linewidth=3)
 
-label_df = pd.DataFrame({
-    'CIBIL Score': [cibil_score],
-    'Approval Probability': [current_prob],
-    'label': [f"Your application: {cibil_score} → {current_prob*100:.1f}%"]
-})
-point = alt.Chart(label_df).mark_point(color="#FFFFFF", size=100, filled=True).encode(
-    x=alt.X('CIBIL Score:Q', scale=alt.Scale(domain=[300, 900])),
-    y=alt.Y('Approval Probability:Q', scale=alt.Scale(domain=[0, 1]))
-)
-text = alt.Chart(label_df).mark_text(align='left', dx=10, dy=-10, color="#FFFFFF", fontSize=13).encode(
-    x=alt.X('CIBIL Score:Q', scale=alt.Scale(domain=[300, 900])),
-    y=alt.Y('Approval Probability:Q', scale=alt.Scale(domain=[0, 1])),
-    text='label:N'
-)
+## Dashed marker line + point + label at the current application's CIBIL score
+ax.axvline(cibil_score, color="#FFFFFF", linestyle=(0, (6, 4)), linewidth=2)
+ax.plot([cibil_score], [current_prob], marker='o', markersize=9,
+        color="#FFFFFF", zorder=5)
+ax.annotate(f"Your application: {cibil_score} → {current_prob*100:.1f}%",
+            xy=(cibil_score, current_prob), xytext=(10, 10),
+            textcoords="offset points", color="#FFFFFF", fontsize=10)
 
-chart = (line + marker + point + text).properties(height=350).configure_view(
-    fill="#1C2541"
-).configure_axis(
-    labelColor="#F5F5F5",
-    titleColor="#F5F5F5",
-    gridColor="#2E3B55"
-)
+ax.set_xlim(300, 900)
+ax.set_ylim(0, 1)
+ax.set_xlabel("CIBIL Score", color="#F5F5F5")
+ax.set_ylabel("Predicted Approval Probability", color="#F5F5F5")
+ax.tick_params(colors="#F5F5F5")
+for spine in ax.spines.values():
+    spine.set_color("#2E3B55")
+ax.grid(color="#2E3B55", alpha=0.6, linewidth=0.6)
+fig.tight_layout()
 
-st.altair_chart(chart, use_container_width=True)
+st.pyplot(fig, width="stretch")
 st.caption("The dashed line marks your current CIBIL score selection and its predicted approval probability, holding your other inputs fixed.")
 st.caption("📌 Notice how sharply approval probability shifts across a fairly narrow CIBIL score band for this applicant profile — this reflects how dominant credit score is in the model's decision-making (roughly 82% of feature importance), with the loan-to-income and asset-to-loan ratios shifting exactly where that threshold sits.")
 
@@ -248,7 +243,7 @@ if st.session_state.history:
     st.divider()
     st.subheader("Your Prediction History")
     history_df = pd.DataFrame(st.session_state.history)
-    st.dataframe(history_df, use_container_width=True)
+    st.dataframe(history_df, width="stretch")
 
     col_a, col_b = st.columns(2)
     with col_a:
@@ -258,9 +253,9 @@ if st.session_state.history:
             data=csv,
             file_name="loan_prediction_history.csv",
             mime="text/csv",
-            use_container_width=True
+            width="stretch"
         )
     with col_b:
-        if st.button("🗑️ Clear History", use_container_width=True):
+        if st.button("🗑️ Clear History", width="stretch"):
             st.session_state.history = []
             st.rerun()
