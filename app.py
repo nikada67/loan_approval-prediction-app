@@ -1,6 +1,7 @@
 import joblib
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
 ## Load trained model
 try:
@@ -79,7 +80,6 @@ def compute_model_features(cibil_score, loan_term, loan_amount, income_annum,
 ## Sidebar — branding and context
 with st.sidebar:
     st.markdown("### 🏦 LoanSense")
-    st.caption("AI-powered loan approval prediction")
     st.divider()
     st.write("""
     This app predicts whether a loan application will be **Approved** or
@@ -121,26 +121,46 @@ with st.container(border=True):
         income_annum = st.number_input("Applicant's Annual Income (₹)", min_value=100000, max_value=20000000,
                                         value=5000000, step=100000)
         st.caption(f"≈ SGD {income_annum * SGD_RATE:,.0f}")
-        st.caption(f"Loan-to-income ratio: **{loan_amount / income_annum:.2f}x**")
+
+        loan_to_income_ratio = loan_amount / income_annum
+        if loan_to_income_ratio <= 3:
+            lti_badge = "🟢 Comfortable"
+        elif loan_to_income_ratio <= 5:
+            lti_badge = "🟡 Moderate"
+        else:
+            lti_badge = "🔴 Stretched"
+        st.caption(f"Loan-to-income ratio: **{loan_to_income_ratio:.2f}x** — {lti_badge}")
 
     st.markdown("**Applicant's Assets** — used together to gauge how well the loan is collateral-backed")
     col3, col4, col5, col6 = st.columns(4)
     with col3:
         residential_assets_value = st.number_input("Residential Assets (₹)", min_value=0, max_value=30000000,
                                                      value=3000000, step=100000)
+        st.caption(f"≈ SGD {residential_assets_value * SGD_RATE:,.0f}")
     with col4:
         commercial_assets_value = st.number_input("Commercial Assets (₹)", min_value=0, max_value=20000000,
                                                     value=2000000, step=100000)
+        st.caption(f"≈ SGD {commercial_assets_value * SGD_RATE:,.0f}")
     with col5:
         luxury_assets_value = st.number_input("Luxury Assets (₹)", min_value=0, max_value=40000000,
                                                 value=5000000, step=100000)
+        st.caption(f"≈ SGD {luxury_assets_value * SGD_RATE:,.0f}")
     with col6:
         bank_asset_value = st.number_input("Bank Assets (₹)", min_value=0, max_value=15000000,
                                             value=4000000, step=100000)
+        st.caption(f"≈ SGD {bank_asset_value * SGD_RATE:,.0f}")
 
     total_assets = residential_assets_value + commercial_assets_value + luxury_assets_value + bank_asset_value
     asset_to_loan_ratio = total_assets / loan_amount if loan_amount else 0
-    st.caption(f"Total assets: ₹{total_assets:,.0f} · Asset-to-loan coverage: **{asset_to_loan_ratio:.2f}x**")
+    if asset_to_loan_ratio >= 1.5:
+        atl_badge = "🟢 Well covered"
+    elif asset_to_loan_ratio >= 0.7:
+        atl_badge = "🟡 Partial coverage"
+    else:
+        atl_badge = "🔴 Thin coverage"
+    st.caption(f"Total assets: ₹{total_assets:,.0f} (≈ SGD {total_assets * SGD_RATE:,.0f}) · "
+               f"Asset-to-loan coverage: **{asset_to_loan_ratio:.2f}x** — {atl_badge}")
+    st.caption("_Colour bands above are illustrative guides based on this dataset's typical ranges, not the model's exact decision boundary — the model itself weighs all four features together._")
 
     predict_clicked = st.button("Predict Loan Status", width="stretch", type="primary")
 
@@ -221,7 +241,7 @@ if st.session_state.history:
         st.download_button(
             label="⬇️ Download History as CSV",
             data=csv,
-            file_name="loan_prediction_history.csv",
+            file_name=f"loan_prediction_history_{datetime.now():%Y%m%d_%H%M}.csv",
             mime="text/csv",
             width="stretch"
         )
@@ -229,3 +249,7 @@ if st.session_state.history:
         if st.button("🗑️ Clear History", width="stretch"):
             st.session_state.history = []
             st.rerun()
+
+st.divider()
+st.caption("⚠️ This tool produces a statistical prediction based on historical loan data for a course project demo. "
+           "It is not financial advice and should not be used for real lending decisions.")
