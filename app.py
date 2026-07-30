@@ -275,7 +275,3 @@ if st.session_state.history:
         if st.button("🗑️ Clear History", width="stretch"):
             st.session_state.history = []
             st.rerun()
-
-st.divider()
-st.caption("⚠️ This tool produces a statistical prediction based on historical loan data for a course project demo. "
-           "It is not financial advice and should not be used for real lending decisions.")
