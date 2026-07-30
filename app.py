@@ -165,8 +165,11 @@ with st.container(border=True):
     predict_clicked = st.button("Predict Loan Status", width="stretch", type="primary")
 
 ## Live sensitivity readout — how approval probability shifts with CIBIL score,
-## holding the other current inputs fixed. No charting library involved,
-## just live-updating numbers, to keep the app's dependencies minimal.
+## holding the other current inputs fixed. Anchored to the full 300-900 range
+## (rather than +/-50 from the current input) so the swing is always visible,
+## even when the current input already sits deep in "approved" or "rejected"
+## territory. No charting library involved, just live-updating numbers, to
+## keep the app's dependencies minimal.
 st.subheader("How CIBIL Score Affects This Application")
 
 current_row = compute_model_features(cibil_score, loan_term, loan_amount, income_annum,
@@ -174,20 +177,20 @@ current_row = compute_model_features(cibil_score, loan_term, loan_amount, income
                                       luxury_assets_value, bank_asset_value)
 current_prob = model.predict_proba(current_row)[0][1]
 
-lower_row = compute_model_features(max(300, cibil_score - 50), loan_term, loan_amount, income_annum,
+worst_row = compute_model_features(300, loan_term, loan_amount, income_annum,
                                     residential_assets_value, commercial_assets_value,
                                     luxury_assets_value, bank_asset_value)
-higher_row = compute_model_features(min(900, cibil_score + 50), loan_term, loan_amount, income_annum,
-                                     residential_assets_value, commercial_assets_value,
-                                     luxury_assets_value, bank_asset_value)
-lower_prob = model.predict_proba(lower_row)[0][1]
-higher_prob = model.predict_proba(higher_row)[0][1]
+best_row = compute_model_features(900, loan_term, loan_amount, income_annum,
+                                   residential_assets_value, commercial_assets_value,
+                                   luxury_assets_value, bank_asset_value)
+worst_prob = model.predict_proba(worst_row)[0][1]
+best_prob = model.predict_proba(best_row)[0][1]
 
 col_low, col_mid, col_high = st.columns(3)
-col_low.metric(f"CIBIL {max(300, cibil_score - 50)}", f"{lower_prob*100:.1f}%", help="Approval probability 50 points lower")
+col_low.metric("CIBIL 300 (worst case)", f"{worst_prob*100:.1f}%", help="Approval probability at the lowest possible CIBIL score")
 col_mid.metric(f"CIBIL {cibil_score} (your input)", f"{current_prob*100:.1f}%")
-col_high.metric(f"CIBIL {min(900, cibil_score + 50)}", f"{higher_prob*100:.1f}%", help="Approval probability 50 points higher")
-st.caption("📌 These three numbers hold your other inputs fixed and only move the CIBIL score, to show how much it alone swings the outcome — it accounts for roughly 82% of the model's feature importance.")
+col_high.metric("CIBIL 900 (best case)", f"{best_prob*100:.1f}%", help="Approval probability at the highest possible CIBIL score")
+st.caption("📌 These three numbers hold your other inputs fixed and sweep CIBIL score across its full 300–900 range, to show how much it alone swings the outcome — it accounts for roughly 82% of the model's feature importance.")
 
 ## Predict button
 if predict_clicked:
