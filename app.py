@@ -1,5 +1,6 @@
 import joblib
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime
 
@@ -27,6 +28,12 @@ st.markdown("""
 
     .stApp {
         background: linear-gradient(180deg, #0B132B 0%, #1C2541 100%);
+    }
+
+    /* Trim the default top gap above the title / sidebar content, which
+       otherwise leaves a lot of empty space below the browser toolbar. */
+    .block-container {
+        padding-top: 2rem !important;
     }
 
     h1, h2, h3 {
@@ -207,6 +214,7 @@ if predict_clicked:
             confidence = probability[1] if prediction == 1 else probability[0]
 
             st.divider()
+            st.markdown('<div id="result-anchor"></div>', unsafe_allow_html=True)
             st.subheader("Result")
             with st.container(border=True):
                 if prediction == 1:
@@ -216,6 +224,21 @@ if predict_clicked:
                 else:
                     st.error("Prediction: Loan Rejected ❌")
                     st.progress(probability[0], text=f"Confidence: {probability[0]*100:.1f}%")
+
+            ## Auto-scroll down to the result — otherwise a Rejected outcome
+            ## (no balloons, nothing pulling the eye) can render below the
+            ## fold and the user may not realise there's more to see.
+            components.html(
+                """
+                <script>
+                setTimeout(function() {
+                    var el = window.parent.document.getElementById('result-anchor');
+                    if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+                }, 200);
+                </script>
+                """,
+                height=0,
+            )
 
             st.session_state.history.append({
                 'CIBIL Score': cibil_score,
